@@ -4,9 +4,4 @@ import { UserService } from './user.service';
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
-    @Get(':username')
-    async getUserByUsername(@Param('username') username: string) {
-        return await this.userService.getByUsername(username);
-    }
-
 }

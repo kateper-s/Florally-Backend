@@ -1,12 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from 'src/dtos/create-user.dto';
-import { randomBytes, scrypt as _scrypt } from 'crypto';
-import { promisify } from 'util';
+import { Role } from "./user.types";
 
-const scrypt = promisify(_scrypt); // callback -> promise
 
 @Injectable()
 export class UserService {
@@ -15,35 +13,35 @@ export class UserService {
 
     async create(dto: CreateUserDto) {
         const newUserEmail = dto.email;
-        const newUserUsername = dto.username;
         const newUserPassword = dto.password;
-
         if (await this.getByEmail(newUserEmail))
-            throw new BadRequestException("данная почта уже используется!")
-        if (await this.getByUsername(newUserUsername))
-            throw new BadRequestException("пользователь с таким именем уже существует!");
+          throw new HttpException(
+            "Пользователь с такой почтой уже существует!",
+            HttpStatus.BAD_REQUEST,
+          );
 
-        const salt = randomBytes(8).toString('hex');
-        const hash = (await scrypt(newUserPassword, salt, 32)) as Buffer;
-
-        const encryptedPassword = salt + '.' + hash.toString('hex');
-
-        const newUser = await this.userRepository.create({
-            username: newUserUsername,
-            email: newUserEmail,
-            password: encryptedPassword
+        const newUser = this.userRepository.create({
+          email: newUserEmail,
+          password: await encryptPassword(newUserPassword),
+          regDate: new Date(),
+          role: Role.BasicUser,
         });
         return await this.userRepository.save(newUser);
-    }
+      }
 
-    // id должен иметь вид uuid!!!
-    async getById(id: string) {
-        return await this.userRepository.findOneBy({ id: id });
-    }
-
-    async getByUsername(username: string) {
-        return await this.userRepository.findOneBy({ username: username });
-    }
+     async getById(id: string)
+     {
+       try
+       {
+         const user = await this.userRepository.findOneBy({ id: id });
+         delete user.password;
+         return user;
+       }
+        catch
+       {
+         throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+       }
+     }
 
     async getByEmail(email: string) {
         return await this.userRepository.findOneBy({ email: email });
