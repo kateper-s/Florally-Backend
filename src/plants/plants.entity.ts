@@ -5,10 +5,10 @@ export class Plant {
     @PrimaryGeneratedColumn("uuid")
     id: string;
     
-    @Column()
+    @Column({length:255})
     name: string;
 
-    @Column()
+    @Column({length:255})
     description: string;
 
     @Column()
