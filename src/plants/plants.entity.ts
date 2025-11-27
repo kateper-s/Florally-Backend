@@ -8,7 +8,7 @@ export class Plant {
     @Column({length:255})
     name: string;
 
-    @Column({length:255})
+    @Column({length:1024})
     description: string;
 
     @Column()
