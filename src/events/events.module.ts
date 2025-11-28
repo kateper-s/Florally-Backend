@@ -3,7 +3,7 @@ import { EventController } from './evetns.controller';
 import { EventService } from './events.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Event } from './events.entity';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 
 @Module({
     imports: [TypeOrmModule.forFeature([Event])],
