@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Query} from '@nestjs/common';
 import { PlantsService } from './plants.service';
 import { CreatePlantDto } from '../dtos/plants.dto';
-import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('plants')
 @Controller('plants')
@@ -16,14 +16,13 @@ export class PlantsController {
 
     @Get('season/:season')
     @ApiOperation({summary: 'Get plants by season' })
-    @ApiParam({name: 'season', description: 'Name of the season' })
     async getPlantsBySeason(@Param('season') season: string) {
         return this.plantsService.getPlantsBySeason(season);
     }
 
     @Get(':id')
     @ApiOperation({summary: 'Get a plant by ID'})
-    async getPlantById(@Param('id', ParseIntPipe) id: string) {
+    async getPlantById(@Param('id') id: string) {
         return this.plantsService.getPlantById(id);
     }
 }
