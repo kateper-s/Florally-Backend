@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
 import { Repository } from "typeorm";
 import { CreateUserDto, UpdateUserDto } from "src/dtos/user.dto";
+import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 
 @Injectable()
 export class UserService {
@@ -68,7 +69,7 @@ export class UserService {
     }
 
     if (dto.password) {
-      user.password = dto.password;
+      user.password = await encryptPassword(dto.password);
     }
 
     user.updated_at = new Date();
