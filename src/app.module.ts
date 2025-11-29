@@ -4,6 +4,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserModule } from "./user/user.module";
 import { User } from "./user/user.entity";
 import { ConfigModule } from "@nestjs/config";
+import { Plant } from "./plants/plants.entity";
+import { Event } from "./events/events.entity";
+import { PlantsModule } from "./plants/plants.module";
+import { EventModule } from "./events/events.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -16,12 +20,14 @@ import { ConfigModule } from "@nestjs/config";
       username: process.env.PG_USERNAME,
       password: process.env.PG_PASSWORD,
       database: process.env.PG_DATABASE,
-      entities: [User],
+      entities: [User, Plant, Event],
       synchronize: true,
       // autoLoadEntities: true
     }),
     AuthModule,
     UserModule,
+    PlantsModule,
+    EventModule,
   ],
   controllers: [],
   providers: [],
