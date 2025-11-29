@@ -2,8 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column, Timestamp } from "typeorm";
 
 @Entity()
 export class Event {
-    @PrimaryGeneratedColumn()
-    id:number;
+    @PrimaryGeneratedColumn('uuid')
+    id:string;
     
     @Column({length:255})
     name:string;
@@ -12,19 +12,19 @@ export class Event {
     completed:boolean;
 
     @Column()
-    created_at:Timestamp;
+    created_at:Date;
 
     @Column()
-    updated_at:Timestamp;
+    updated_at:Date;
 
     @Column()
-    data:Timestamp;
+    data:Date;
 
     @Column()
-    user_id:number;
+    user_id:string;
 
     @Column()
-    user_plants_id:number;
+    user_plants_id:string;
 
     @Column({length:255})
     color:string; 
