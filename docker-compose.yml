@@ -1,15 +1,15 @@
 services:
-  db:
-    image: postgres:16
-    container_name: db
+  db-florally:
+    image: postgres:16.0
+    container_name: db-florally
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: florally
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_florally:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "25432:5432"
 
 volumes:
-  pgdata:
+  pgdata_florally:
