@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Plant } from './plants.entity';
 import { CreatePlantDto } from '../dtos/plants.dto';
 
@@ -31,7 +31,7 @@ export class PlantsService {
 
     async getPlantsBySeason(season: string): Promise<Plant[]> {
         return await this.plantsRepository.find({
-            where: { season },
+            where: { season: Like(`%${season}%`) },
             order: { name: 'ASC' }
         });
     }
