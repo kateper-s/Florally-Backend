@@ -10,10 +10,25 @@ export async function encryptPassword(password: string): Promise<string> {
 }
 
 export async function checkPassword(
-  dto: { password: string },
+  inputPassword: string,
   storedPassword: string,
 ): Promise<boolean> {
+  console.log("Checking password. Stored:", storedPassword);
+
+  if (!storedPassword || !storedPassword.includes(".")) {
+    console.error("Invalid stored password format");
+    return false;
+  }
+
   const [salt, storedHash] = storedPassword.split(".");
-  const hash = (await scryptAsync(dto.password, salt, 32)) as Buffer;
-  return storedHash === hash.toString("hex");
+  console.log("Salt:", salt, "Stored hash:", storedHash);
+
+  const hash = (await scryptAsync(inputPassword, salt, 32)) as Buffer;
+  const inputHash = hash.toString("hex");
+  console.log("Input hash:", inputHash);
+
+  const result = storedHash === inputHash;
+  console.log("Password match:", result);
+
+  return result;
 }

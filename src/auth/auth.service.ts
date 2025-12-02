@@ -12,12 +12,16 @@ export class AuthService {
   ) {}
 
   async signUp(createUserDto: CreateUserDto) {
+    console.log("Original password:", createUserDto.password);
     const hashedPassword = await encryptPassword(createUserDto.password);
+    console.log("Hashed password:", hashedPassword);
 
     const user = await this.userService.create({
       ...createUserDto,
       password: hashedPassword,
     });
+
+    console.log("User created with hashed password");
 
     const payload = {
       sub: user.id,
@@ -44,7 +48,7 @@ export class AuthService {
       );
     }
 
-    if (!(await checkPassword(signInDto, user.password))) {
+    if (!(await checkPassword(signInDto.password, user.password))) {
       throw new HttpException(
         "Неверные данные для входа",
         HttpStatus.BAD_REQUEST,

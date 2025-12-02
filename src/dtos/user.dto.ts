@@ -38,6 +38,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ example: "newpassword123", description: "User's new password" })
+  @ApiProperty({
+    example: "newpassword123",
+    description: "User's new password",
+  })
   password: string;
 }
