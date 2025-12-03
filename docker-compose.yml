@@ -17,6 +17,34 @@ services:
       retries: 5
     networks:
       - florally-network
+
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: pgadmin_florally
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@florally.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     - db-florally
+  #   networks:
+  #     - florally-network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_florally
+    ports:
+      - "6379:6379"
+    networks:
+      - florally-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   florally-backend:
     build:
       context: .
@@ -29,11 +57,15 @@ services:
       PG_USERNAME: ${PG_USERNAME:-postgres}
       PG_PASSWORD: ${PG_PASSWORD:-password}
       PG_DATABASE: florally
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
 
     ports:
       - "3000:3000"
     depends_on:
       db-florally:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - florally-network

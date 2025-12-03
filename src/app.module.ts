@@ -8,6 +8,8 @@ import { Plant } from "./plants/plants.entity";
 import { Event } from "./events/events.entity";
 import { PlantsModule } from "./plants/plants.module";
 import { EventModule } from "./events/events.module";
+import { RedisModule } from "./redis/redis.module";
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,6 +30,7 @@ import { EventModule } from "./events/events.module";
     UserModule,
     PlantsModule,
     EventModule,
+    RedisModule,
   ],
   controllers: [],
   providers: [],
