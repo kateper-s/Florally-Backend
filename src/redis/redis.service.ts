@@ -12,6 +12,8 @@ export class RedisService {
         port: 6379,
       },
     });
+
+    this.client.connect().catch(console.error);
   }
 
   async set(key: string, value: any, ttl?: number) {
