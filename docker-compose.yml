@@ -4,12 +4,47 @@ services:
     container_name: db-florally
     environment:
       POSTGRES_DB: florally
-      POSTGRES_USER: ${PG_USERNAME}
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_USER: ${PG_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-password}
     volumes:
       - pgdata_florally:/var/lib/postgresql/data
     ports:
       - "25432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - florally-network
+  florally-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: florally-backend
+    environment:
+      NODE_ENV: production
+      PG_HOST: db-florally
+      PG_PORT: 5432
+      PG_USERNAME: ${PG_USERNAME:-postgres}
+      PG_PASSWORD: ${PG_PASSWORD:-password}
+      PG_DATABASE: florally
+
+    ports:
+      - "3000:3000"
+    depends_on:
+      db-florally:
+        condition: service_healthy
+    networks:
+      - florally-network
+    restart: unless-stopped
+    profiles:
+      - full
+      - backend-only
 
 volumes:
   pgdata_florally:
+
+networks:
+  florally-network:
+    driver: bridge

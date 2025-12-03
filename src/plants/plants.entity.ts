@@ -13,4 +13,7 @@ export class Plant {
 
     @Column()
     season: string;
+
+    @Column({type: 'text', nullable: true})
+    photo: string;
 }
