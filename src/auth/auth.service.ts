@@ -12,6 +12,13 @@ export class AuthService {
   ) {}
 
   async signUp(createUserDto: CreateUserDto) {
+    if (createUserDto.password.length < 6) {
+      throw new HttpException(
+        "Пароль должен содержать минимум 6 символов",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     console.log("Original password:", createUserDto.password);
     const hashedPassword = await encryptPassword(createUserDto.password);
     console.log("Hashed password:", hashedPassword);
@@ -70,4 +77,10 @@ export class AuthService {
       },
     };
   }
+
+  async sendVerificationEmail(email: string, username: string) {}
+
+  async checkVerificationCode(email: string, code: string) {}
+
+  async recoverPassword(email: string, newPassword: string) {}
 }
