@@ -4,8 +4,8 @@ services:
     container_name: db-florally
     environment:
       POSTGRES_DB: florally
-      POSTGRES_USER: ${PG_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${PG_PASSWORD:-password}
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
     volumes:
       - pgdata_florally:/var/lib/postgresql/data
     ports:
@@ -54,8 +54,8 @@ services:
       NODE_ENV: production
       PG_HOST: db-florally
       PG_PORT: 5432
-      PG_USERNAME: ${PG_USERNAME:-postgres}
-      PG_PASSWORD: ${PG_PASSWORD:-password}
+      PG_USERNAME: ${PG_USERNAME}
+      PG_PASSWORD: ${PG_PASSWORD}
       PG_DATABASE: florally
       REDIS_HOST: redis
       REDIS_PORT: 6379
