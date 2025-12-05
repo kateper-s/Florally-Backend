@@ -14,7 +14,6 @@ export class UserService {
 
   async create(dto: CreateUserDto) {
     const newUserEmail = dto.email;
-    const newUserPassword = dto.password;
     const newUsername = dto.username;
 
     if (await this.getByEmail(newUserEmail)) {
@@ -31,10 +30,12 @@ export class UserService {
       );
     }
 
+    const hashedPassword = await encryptPassword(dto.password);
+
     const newUser = this.userRepository.create({
       email: newUserEmail,
       username: newUsername,
-      password: newUserPassword,
+      password: hashedPassword,
       is_enabled: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -91,5 +92,42 @@ export class UserService {
 
   async getByUsername(username: string) {
     return await this.userRepository.findOneBy({ username });
+  }
+
+  async updatePassword(email: string, newPassword: string): Promise<boolean> {
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+
+      if (!user) {
+        return false;
+      }
+
+      const isSamePassword = await checkPassword(newPassword, user.password);
+      if (isSamePassword) {
+        throw new HttpException(
+          "Новый пароль должен отличаться от старого",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const hashedPassword = await encryptPassword(newPassword);
+      user.password = hashedPassword;
+      user.updated_at = new Date();
+
+      await this.userRepository.save(user);
+      return true;
+    } catch (error) {
+      console.error("Error updating password:", error);
+      throw error;
+    }
+  }
+
+  async isUserActive(email: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: ["is_enabled"],
+    });
+
+    return !!user?.is_enabled;
   }
 }

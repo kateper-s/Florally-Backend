@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional } from "class-validator";
+import { IsString, IsEmail, IsOptional, MinLength } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateUserDto {
@@ -43,4 +43,38 @@ export class UpdateUserDto {
     description: "User's new password",
   })
   password: string;
+}
+
+export class SendVerificationDto {
+  @IsEmail()
+  @ApiProperty({ example: "user@example.com", description: "User's email" })
+  email: string;
+
+  @IsString()
+  @ApiProperty({ example: "username", description: "User's username" })
+  username: string;
+}
+
+export class CheckVerificationDto {
+  @IsEmail()
+  @ApiProperty({ example: "user@example.com", description: "User's email" })
+  email: string;
+
+  @IsString()
+  @ApiProperty({ example: "123456", description: "Verification code" })
+  code: string;
+}
+
+export class RecoverPasswordDto {
+  @IsEmail()
+  @ApiProperty({ example: "user@example.com", description: "User's email" })
+  email: string;
+
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
+  @ApiProperty({
+    example: "newpassword123",
+    description: "New password (min 6 chars)",
+  })
+  newPassword: string;
 }
