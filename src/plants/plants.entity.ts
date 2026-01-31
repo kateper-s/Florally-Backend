@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { UserPlant } from "src/users_plants/users_plants.entity";
 
 @Entity()
 export class Plant {
@@ -16,4 +17,7 @@ export class Plant {
 
     @Column({type: 'text', nullable: true})
     photo: string;
+
+    @OneToMany(() => UserPlant, (userPlant) => userPlant.plant)
+    userPlants: UserPlant[];
 }
