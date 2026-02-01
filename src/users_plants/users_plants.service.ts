@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPlant } from './users_plants.entity';
-import { CreateUserPlantDto } from '../dtos/users_plants.dto';
+import { CreateUserPlantDto, UpdateUserPlantDto } from '../dtos/users_plants.dto';
 
 @Injectable()
 export class UserPlantsService {
@@ -48,5 +48,11 @@ export class UserPlantsService {
             throw new NotFoundException(`Personal plant with ID ${id} not found`);
         }
         await this.userPlantRepository.remove(userPlant);
+        }
+
+    async updateUserPlant(id: string, userId: string, dto: UpdateUserPlantDto): Promise<UserPlant> {
+        const userPlant = await this.findOneUserPlant(id, userId);
+        Object.assign(userPlant, dto);
+        return this.userPlantRepository.save(userPlant);
         }
 }

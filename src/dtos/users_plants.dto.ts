@@ -8,3 +8,9 @@ export class CreateUserPlantDto {
   @IsOptional()
   color?: string;
 }
+
+export class UpdateUserPlantDto {
+  @IsString()
+  @IsOptional()
+  color?: string;
+}
