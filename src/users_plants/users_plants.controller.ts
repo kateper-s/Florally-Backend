@@ -23,6 +23,18 @@ export class UserPlantsController {
         return this.userPlantsService.findAllForUser(userId);
     }
 
+    @Get(':id')
+    findOne(@Param('id') id: string, @Request() req) {
+        const userId = req.user.id;
+        return this.userPlantsService.findOneUserPlant(id, userId);
+    }
+
+    @Patch(':id')
+    update(@Param('id') id: string, @Body() dto: UpdateUserPlantDto, @Request() req) {
+        const userId = req.user.id;
+        return this.userPlantsService.updateUserPlant(id, userId, dto);
+    }
+
     @Delete(':id')
     remove(@Param('id') id: string, @Request() req) {
         const userId = req.user.id;
