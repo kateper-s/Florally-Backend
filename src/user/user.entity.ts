@@ -3,23 +3,23 @@ import { UserPlant } from '../users_plants/users_plants.entity';
 
 @Entity()
 export class User {
-    @PrimaryGeneratedColumn("uuid")
-    id: string;
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-    @Column({ unique: true })
-    email: string;
+  @Column({ unique: true })
+  email: string;
 
-    @Column()
-    username: string;
+  @Column()
+  username: string;
 
-    @Column()
-    password: string;
+  @Column()
+  password: string;
 
-    @Column()
-    is_enabled: boolean;
+  @Column({ name: "is_enabled", default: true })
+  is_enabled: boolean;
 
-    @Column()
-    created_at: Date;
+  @Column()
+  created_at: Date;
 
     @Column()
     updated_at: Date;

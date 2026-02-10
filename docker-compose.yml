@@ -10,6 +10,73 @@ services:
       - pgdata_florally:/var/lib/postgresql/data
     ports:
       - "25432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - florally-network
+
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: pgadmin_florally
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@florally.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     - db-florally
+  #   networks:
+  #     - florally-network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_florally
+    ports:
+      - "6379:6379"
+    networks:
+      - florally-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  florally-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: florally-backend
+    environment:
+      NODE_ENV: production
+      PG_HOST: db-florally
+      PG_PORT: 5432
+      PG_USERNAME: ${PG_USERNAME}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_DATABASE: florally
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    ports:
+      - "3000:3000"
+    depends_on:
+      db-florally:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - florally-network
+    restart: unless-stopped
+    profiles:
+      - full
+      - backend-only
 
 volumes:
   pgdata_florally:
+
+networks:
+  florally-network:
+    driver: bridge
