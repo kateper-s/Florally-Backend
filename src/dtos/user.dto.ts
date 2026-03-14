@@ -78,3 +78,17 @@ export class RecoverPasswordDto {
   })
   newPassword: string;
 }
+
+export class ChangePasswordDto {
+  @IsString()
+  @ApiProperty()
+  oldPassword: string;
+
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
+  @ApiProperty({
+    example: "newpassword123",
+    description: "New password (min 6 chars)",
+  })
+  newPassword: string;
+}

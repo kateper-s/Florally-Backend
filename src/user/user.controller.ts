@@ -1,7 +1,7 @@
-import { Controller, UseGuards, Get, Patch, Body, Req } from "@nestjs/common";
+import { Controller, UseGuards, Get, Post, Patch, Body, Req } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
-import { UpdateUserDto } from "src/dtos/user.dto";
+import { UpdateUserDto,ChangePasswordDto } from "src/dtos/user.dto";
 import { JwtAuthGuard } from "src/guard/jwt-auth.guard";
 
 @ApiTags("user")
@@ -23,5 +23,12 @@ export class UserController {
   async updateUser(@Req() req: any, @Body() dto: UpdateUserDto) {
     const id = req["user"]["sub"];
     return await this.userService.update(id, dto);
+  }
+
+  @Post('change-password')
+  @ApiOperation({ summary: 'Change user password' })
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    const id = req.user.sub;
+    return await this.userService.changePassword(id, dto);
   }
 }

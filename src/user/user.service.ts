@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
 import { Repository } from "typeorm";
-import { CreateUserDto, UpdateUserDto } from "src/dtos/user.dto";
+import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
 import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 
 @Injectable()
@@ -94,32 +94,22 @@ export class UserService {
     return await this.userRepository.findOneBy({ username });
   }
 
-  async updatePassword(email: string, newPassword: string): Promise<boolean> {
-    try {
-      const user = await this.userRepository.findOne({ where: { email } });
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.getById(userId);
 
-      if (!user) {
-        return false;
-      }
-
-      const isSamePassword = await checkPassword(newPassword, user.password);
-      if (isSamePassword) {
-        throw new HttpException(
-          "Новый пароль должен отличаться от старого",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const hashedPassword = await encryptPassword(newPassword);
-      user.password = hashedPassword;
-      user.updated_at = new Date();
-
-      await this.userRepository.save(user);
-      return true;
-    } catch (error) {
-      console.error("Error updating password:", error);
-      throw error;
+    const isOldPasswordValid = await checkPassword(dto.oldPassword, user.password);
+    if (!isOldPasswordValid) {
+      throw new HttpException('Неверный старый пароль', HttpStatus.BAD_REQUEST);
     }
+
+    const isSamePassword = await checkPassword(dto.newPassword, user.password);
+    if (isSamePassword) {
+      throw new HttpException('Новый пароль должен отличаться от старого', HttpStatus.BAD_REQUEST);
+    }
+
+    user.password = await encryptPassword(dto.newPassword);
+    await this.userRepository.save(user);
+    return { message: 'Пароль успешно изменён' };
   }
 
   async isUserActive(email: string): Promise<boolean> {
