@@ -94,6 +94,13 @@ export class UserService {
     return await this.userRepository.findOneBy({ username });
   }
 
+  async updatePassword(userId: string, hashedPassword: string) {
+    const user = await this.getById(userId);
+    user.password = hashedPassword;
+    await this.userRepository.save(user);
+    return true;
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.getById(userId);
 
@@ -120,4 +127,5 @@ export class UserService {
 
     return !!user?.is_enabled;
   }
+  
 }
