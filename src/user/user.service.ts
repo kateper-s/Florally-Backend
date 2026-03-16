@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
 import { Repository } from "typeorm";
-import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
+import { CreateUserInternalDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
 import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 
 @Injectable()
@@ -12,7 +12,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserInternalDto) {
     const newUserEmail = dto.email;
     const newUsername = dto.username;
 
@@ -36,7 +36,7 @@ export class UserService {
       email: newUserEmail,
       username: newUsername,
       password: hashedPassword,
-      is_enabled: true,
+      is_enabled: dto.is_enabled ?? true,
       created_at: new Date(),
       updated_at: new Date(),
     });
@@ -45,7 +45,12 @@ export class UserService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    const user = await this.getById(id);
+    let user;
+    if (dto.password) {
+      user = await this.getByIdWithPassword(id);
+    } else {
+      user = await this.getById(id);
+    }
 
     if (dto.username) {
       if (!(await this.getByUsername(dto.username))) {
@@ -78,13 +83,30 @@ export class UserService {
   }
 
   async getById(id: string) {
-    const user = await this.userRepository.findOneBy({ id });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: ['id', 'email', 'username', 'is_enabled', 'created_at', 'updated_at']
+    });
+    
     if (!user) {
       throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
     }
-    delete user.password;
+    
     return user;
   }
+
+  async getByIdWithPassword(id: string) {
+  const user = await this.userRepository.findOne({
+    where: { id },
+    select: ['id', 'email', 'username', 'password', 'is_enabled', 'created_at', 'updated_at']
+  });
+  
+  if (!user) {
+    throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+  }
+  
+  return user;
+}
 
   async getByEmail(email: string) {
     return await this.userRepository.findOneBy({ email });
@@ -95,14 +117,14 @@ export class UserService {
   }
 
   async updatePassword(userId: string, hashedPassword: string) {
-    const user = await this.getById(userId);
+    const user = await this.getByIdWithPassword(userId);
     user.password = hashedPassword;
     await this.userRepository.save(user);
     return true;
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = await this.getById(userId);
+    const user = await this.getByIdWithPassword(userId);
 
     const isOldPasswordValid = await checkPassword(dto.oldPassword, user.password);
     if (!isOldPasswordValid) {
@@ -128,4 +150,23 @@ export class UserService {
     return !!user?.is_enabled;
   }
   
+  async deleteUser(userId: string) {
+    const user = await this.getById(userId);
+    if (user) {
+      await this.userRepository.remove(user);
+      return true;
+    }
+    return false;
+  }
+
+  async activateUser(userId: string) {
+    const user = await this.getById(userId);
+    if (!user) {
+      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
+    }
+    
+    user.is_enabled = true;
+    await this.userRepository.save(user);
+    return true;
+  }
 }

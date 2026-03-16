@@ -15,6 +15,10 @@ export class CreateUserDto {
   password: string;
 }
 
+export class CreateUserInternalDto extends CreateUserDto {
+  is_enabled?: boolean;
+}
+
 export class SignInDto {
   @IsEmail()
   @ApiProperty({ example: "123@ya.ru", description: "User's email" })
