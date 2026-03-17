@@ -8,7 +8,7 @@ export class RedisService {
   constructor() {
     this.client = createClient({
       socket: {
-        host: "localhost",
+        host: process.env.REDIS_HOST,
         port: 6379,
       },
     });
