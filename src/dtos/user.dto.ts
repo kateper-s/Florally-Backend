@@ -15,6 +15,10 @@ export class CreateUserDto {
   password: string;
 }
 
+export class CreateUserInternalDto extends CreateUserDto {
+  is_enabled?: boolean;
+}
+
 export class SignInDto {
   @IsEmail()
   @ApiProperty({ example: "123@ya.ru", description: "User's email" })
@@ -69,6 +73,20 @@ export class RecoverPasswordDto {
   @IsEmail()
   @ApiProperty({ example: "user@example.com", description: "User's email" })
   email: string;
+
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
+  @ApiProperty({
+    example: "newpassword123",
+    description: "New password (min 6 chars)",
+  })
+  newPassword: string;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  @ApiProperty()
+  oldPassword: string;
 
   @IsString()
   @MinLength(6, { message: "Password must be at least 6 characters long" })

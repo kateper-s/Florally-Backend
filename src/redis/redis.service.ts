@@ -8,12 +8,17 @@ export class RedisService {
   constructor() {
     this.client = createClient({
       socket: {
-        host: "localhost",
+        host: process.env.REDIS_HOST,
         port: 6379,
       },
     });
 
-    this.client.connect().catch(console.error);
+    this.client.on('error', (err) => {
+      console.error('Redis connection error:', err);
+      throw new Error('Failed to connect to Redis');
+    });
+
+    this.client.connect();
   }
 
   async set(key: string, value: any, ttl?: number) {
@@ -31,5 +36,9 @@ export class RedisService {
 
   async del(key: string) {
     await this.client.del(key);
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    return this.client.keys(pattern);
   }
 }

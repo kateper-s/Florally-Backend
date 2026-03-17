@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
 import { Repository } from "typeorm";
-import { CreateUserDto, UpdateUserDto } from "src/dtos/user.dto";
+import { CreateUserInternalDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
 import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 
 @Injectable()
@@ -12,7 +12,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserInternalDto) {
     const newUserEmail = dto.email;
     const newUsername = dto.username;
 
@@ -36,7 +36,7 @@ export class UserService {
       email: newUserEmail,
       username: newUsername,
       password: hashedPassword,
-      is_enabled: true,
+      is_enabled: dto.is_enabled ?? true,
       created_at: new Date(),
       updated_at: new Date(),
     });
@@ -45,7 +45,12 @@ export class UserService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    const user = await this.getById(id);
+    let user;
+    if (dto.password) {
+      user = await this.getByIdWithPassword(id);
+    } else {
+      user = await this.getById(id);
+    }
 
     if (dto.username) {
       if (!(await this.getByUsername(dto.username))) {
@@ -78,13 +83,30 @@ export class UserService {
   }
 
   async getById(id: string) {
-    const user = await this.userRepository.findOneBy({ id });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: ['id', 'email', 'username', 'is_enabled', 'created_at', 'updated_at']
+    });
+    
     if (!user) {
       throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
     }
-    delete user.password;
+    
     return user;
   }
+
+  async getByIdWithPassword(id: string) {
+  const user = await this.userRepository.findOne({
+    where: { id },
+    select: ['id', 'email', 'username', 'password', 'is_enabled', 'created_at', 'updated_at']
+  });
+  
+  if (!user) {
+    throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+  }
+  
+  return user;
+}
 
   async getByEmail(email: string) {
     return await this.userRepository.findOneBy({ email });
@@ -94,32 +116,29 @@ export class UserService {
     return await this.userRepository.findOneBy({ username });
   }
 
-  async updatePassword(email: string, newPassword: string): Promise<boolean> {
-    try {
-      const user = await this.userRepository.findOne({ where: { email } });
+  async updatePassword(userId: string, hashedPassword: string) {
+    const user = await this.getByIdWithPassword(userId);
+    user.password = hashedPassword;
+    await this.userRepository.save(user);
+    return true;
+  }
 
-      if (!user) {
-        return false;
-      }
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.getByIdWithPassword(userId);
 
-      const isSamePassword = await checkPassword(newPassword, user.password);
-      if (isSamePassword) {
-        throw new HttpException(
-          "Новый пароль должен отличаться от старого",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const hashedPassword = await encryptPassword(newPassword);
-      user.password = hashedPassword;
-      user.updated_at = new Date();
-
-      await this.userRepository.save(user);
-      return true;
-    } catch (error) {
-      console.error("Error updating password:", error);
-      throw error;
+    const isOldPasswordValid = await checkPassword(dto.oldPassword, user.password);
+    if (!isOldPasswordValid) {
+      throw new HttpException('Неверный старый пароль', HttpStatus.BAD_REQUEST);
     }
+
+    const isSamePassword = await checkPassword(dto.newPassword, user.password);
+    if (isSamePassword) {
+      throw new HttpException('Новый пароль должен отличаться от старого', HttpStatus.BAD_REQUEST);
+    }
+
+    user.password = await encryptPassword(dto.newPassword);
+    await this.userRepository.save(user);
+    return { message: 'Пароль успешно изменён' };
   }
 
   async isUserActive(email: string): Promise<boolean> {
@@ -129,5 +148,25 @@ export class UserService {
     });
 
     return !!user?.is_enabled;
+  }
+  
+  async deleteUser(userId: string) {
+    const user = await this.getById(userId);
+    if (user) {
+      await this.userRepository.remove(user);
+      return true;
+    }
+    return false;
+  }
+
+  async activateUser(userId: string) {
+    const user = await this.getById(userId);
+    if (!user) {
+      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
+    }
+    
+    user.is_enabled = true;
+    await this.userRepository.save(user);
+    return true;
   }
 }

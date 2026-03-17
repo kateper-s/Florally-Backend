@@ -9,6 +9,7 @@ import { Event } from "./events/events.entity";
 import { PlantsModule } from "./plants/plants.module";
 import { EventModule } from "./events/events.module";
 import { RedisModule } from "./redis/redis.module";
+import { MailerModule } from "./mailer/mailer.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RedisModule } from "./redis/redis.module";
     PlantsModule,
     EventModule,
     RedisModule,
+    MailerModule,
   ],
   controllers: [],
   providers: [],

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Put } from "@nestjs/common";
+import { Controller, Post, Body, Put,Param } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import {
   CreateUserDto,
@@ -18,6 +18,12 @@ export class AuthController {
   @ApiOperation({ summary: "User registration" })
   async signUp(@Body() createUserDto: CreateUserDto) {
     return this.authService.signUp(createUserDto);
+  }
+
+  @Post('signup/confirmation/:token')
+  @ApiOperation({ summary: 'Confirm email with token' })
+  async confirmEmail(@Param('token') token: string) {
+    return this.authService.confirmEmail(token);
   }
 
   @Post("signin")
