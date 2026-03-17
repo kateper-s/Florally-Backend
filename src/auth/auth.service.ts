@@ -366,12 +366,6 @@ export class AuthService {
   }
 
 async recoverPassword(email: string, newPassword: string) {
-  if (newPassword.length < 6) {
-    throw new HttpException(
-      "Пароль должен содержать минимум 6 символов",
-      HttpStatus.BAD_REQUEST,
-    );
-  }
   
   const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
   const verifiedDataStr = await this.redisService.get(verifiedKey);
