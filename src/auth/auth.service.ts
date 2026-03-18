@@ -6,6 +6,7 @@ import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 import { RedisService } from "../redis/redis.service";
 import { MailerService } from "@nestjs-modules/mailer";
 import { Interval } from "@nestjs/schedule";
+import { API_URL } from "src/config/url.config";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -135,19 +136,33 @@ export class AuthService {
       this.CONFIRM_TTL
     );
 
-    const confirmationLink = `https://florally/auth/signup/confirmation/${confirmationToken}`;
+    const confirmationLink = `${API_URL}/auth/signup/confirmation/${confirmationToken}`;
 
-    /*try {
+    try {
       await this.mailerService.sendMail({
         to: user.email,
         subject: 'Подтверждение регистрации',
-        template: './confirmation-email',
-        context: {
-          username: user.username,
-          confirmationLink,
-          year: new Date().getFullYear(),
-        },
         text: `Здравствуйте, ${user.username}!\n\nДля подтверждения регистрации перейдите по ссылке:\n${confirmationLink}\n\nСсылка действительна в течение 10 часов.`,
+        html: `
+          <div class="header">
+            <h1>Florally</h1>
+          </div>
+          <div class="content">
+            <h2>Добро пожаловать, ${user.username}!</h2>
+            <p>Спасибо за регистрацию на Florally - вашем персональном помощнике по уходу за растениями!</p>
+            <p>Для подтверждения email и активации аккаунта нажмите на кнопку ниже:</p>
+            <div style="text-align: center;">
+              <a href="${confirmationLink}" class="button">Подтвердить email</a>
+            </div>
+            <p>Или скопируйте ссылку: <br> <small>${confirmationLink}</small></p>
+            <p>Ссылка действительна в течение 10 часов.</p>
+            <p>Если вы не регистрировались на Florally, просто проигнорируйте это письмо.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Florally. Все права защищены.</p>
+            <p>С заботой о ваших растениях ❤️</p>
+          </div>
+        `,
       });
     } catch (error) {
       console.error('Ошибка отправки email подтверждения:', error);
@@ -158,7 +173,7 @@ export class AuthService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-    */
+    
     console.log("User created with hashed password");
 
     return {
@@ -229,12 +244,12 @@ export class AuthService {
       );
     }
 
-    /*if (!user.is_enabled) {
+    if (!user.is_enabled) {
       throw new HttpException(
         "Email не подтвержден. Проверьте почту для подтверждения регистрации",
         HttpStatus.FORBIDDEN,
       );
-    }*/
+    }
 
     if (!(await checkPassword(signInDto.password, user.password))) {
       throw new HttpException(
@@ -301,12 +316,23 @@ export class AuthService {
       await this.mailerService.sendMail({
         to: email,
         subject: 'Восстановление пароля',
-        template: './recovery-password',
-        context: {
-          username,
-          code,
-        },
         text: `Здравствуйте, ${username}!\n\nВаш код для восстановления пароля: ${code}\n\nКод действителен в течение 5 минут.`,
+        html: `
+        <h1>Florally</h1>
+        </div>
+        <div class="content">
+          <h2>Здравствуйте, ${username}!</h2>
+          <p>Вы запросили восстановление пароля на Florally.</p>
+          <p>Ваш код для восстановления:</p>
+          <div class="code">${code}</div>
+          <p>Введите этот код в приложении для смены пароля.</p>
+          <p>Код действителен в течение 5 минут.</p>
+          <p>Если вы не запрашивали восстановление пароля, просто проигнорируйте это письмо. Ваш аккаунт в безопасности.</p>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Florally. Все права защищены.</p>
+          <p>С заботой о ваших растениях ❤️</p>
+        </div>`
       });
     } catch (error) {
       console.error('Ошибка отправки email:', error);
