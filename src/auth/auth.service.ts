@@ -137,7 +137,7 @@ export class AuthService {
 
     const confirmationLink = `https://florally/auth/signup/confirmation/${confirmationToken}`;
 
-    try {
+    /*try {
       await this.mailerService.sendMail({
         to: user.email,
         subject: 'Подтверждение регистрации',
@@ -158,7 +158,7 @@ export class AuthService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
+    */
     console.log("User created with hashed password");
 
     return {
@@ -229,12 +229,12 @@ export class AuthService {
       );
     }
 
-    if (!user.is_enabled) {
+    /*if (!user.is_enabled) {
       throw new HttpException(
         "Email не подтвержден. Проверьте почту для подтверждения регистрации",
         HttpStatus.FORBIDDEN,
       );
-    }
+    }*/
 
     if (!(await checkPassword(signInDto.password, user.password))) {
       throw new HttpException(

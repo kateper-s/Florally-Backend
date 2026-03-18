@@ -1,4 +1,5 @@
 import { IsString, IsEmail, IsOptional, MinLength } from "class-validator";
+import { Transform } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateUserDto {
@@ -26,6 +27,7 @@ export class SignInDto {
 
   @IsString()
   @ApiProperty({ example: "123", description: "User's password" })
+  @Transform(({ value }) => value?.trim())
   password: string;
 }
 

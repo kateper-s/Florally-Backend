@@ -30,12 +30,10 @@ export class UserService {
       );
     }
 
-    const hashedPassword = await encryptPassword(dto.password);
-
     const newUser = this.userRepository.create({
       email: newUserEmail,
       username: newUsername,
-      password: hashedPassword,
+      password: dto.password,
       is_enabled: dto.is_enabled ?? true,
       created_at: new Date(),
       updated_at: new Date(),

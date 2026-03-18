@@ -6,8 +6,10 @@ import { User } from "./user/user.entity";
 import { ConfigModule } from "@nestjs/config";
 import { Plant } from "./plants/plants.entity";
 import { Event } from "./events/events.entity";
+import { UserPlant } from "./users_plants/users_plants.entity";
 import { PlantsModule } from "./plants/plants.module";
 import { EventModule } from "./events/events.module";
+import { UserPlantsModule } from "./users_plants/users_plants.module"
 import { RedisModule } from "./redis/redis.module";
 import { MailerModule } from "./mailer/mailer.module";
 
@@ -23,7 +25,7 @@ import { MailerModule } from "./mailer/mailer.module";
       username: process.env.PG_USERNAME,
       password: process.env.PG_PASSWORD,
       database: process.env.PG_DATABASE,
-      entities: [User, Plant, Event],
+      entities: [User, Plant, Event, UserPlant],
       synchronize: true,
       // autoLoadEntities: true
     }),
@@ -33,6 +35,7 @@ import { MailerModule } from "./mailer/mailer.module";
     EventModule,
     RedisModule,
     MailerModule,
+    UserPlantsModule,
   ],
   controllers: [],
   providers: [],
