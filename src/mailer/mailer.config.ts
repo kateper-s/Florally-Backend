@@ -18,11 +18,4 @@ export const getMailConfig = async (
   defaults: {
     from: `"Florallyhelp" <${configService.get<string>("SMTP_FROM")}>`
   },
-  template: {
-    dir: join(__dirname, '..', 'templates'),
-    adapter: new EjsAdapter(),
-    options: {
-      strict: true,
-    },
-  },
 });
