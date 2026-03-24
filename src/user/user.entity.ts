@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from "typeorm";
 import { UserPlant } from '../users_plants/users_plants.entity';
+import { UserRoom } from "src/user_rooms/user_rooms.entity";
 
 @Entity()
 export class User {
@@ -21,9 +22,12 @@ export class User {
   @Column()
   created_at: Date;
 
-    @Column()
-    updated_at: Date;
+  @Column()
+  updated_at: Date;
 
-    @OneToMany(() => UserPlant, (userPlant) => userPlant.user)
-    userPlants: UserPlant[];
+  @OneToMany(() => UserPlant, (userPlant) => userPlant.user)
+  userPlants: UserPlant[];
+
+  @OneToMany(() => UserRoom, room => room.user)
+  userRooms: UserRoom[];
 }

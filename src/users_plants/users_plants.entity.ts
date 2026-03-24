@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../user/user.entity';
 import { Plant } from '../plants/plants.entity';
+import { UserRoom } from 'src/user_rooms/user_rooms.entity';
 
 @Entity('users_plants')
 export class UserPlant {
@@ -19,4 +20,11 @@ export class UserPlant {
 
     @Column({type: 'varchar', length: 7, nullable: true, default: '#FFFFFF'})
     color: string;
+
+    @ManyToOne(() => UserRoom, room => room.userPlants, { nullable: true })
+    @JoinColumn({ name: 'room_id' })
+    room: UserRoom | null;
+
+    @Column({ name: 'room_id', nullable: true })
+    room_id: string | null;
 }

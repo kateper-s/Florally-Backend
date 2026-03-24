@@ -7,10 +7,22 @@ export class CreateUserPlantDto {
   @IsString()
   @IsOptional()
   color?: string;
+
+  @IsString()
+  @IsOptional()
+  roomId?: string;
 }
 
 export class UpdateUserPlantDto {
   @IsString()
   @IsOptional()
+  plantId?: string;
+
+  @IsString()
+  @IsOptional()
   color?: string;
+
+  @IsString()
+  @IsOptional()
+  roomId?: string;
 }
