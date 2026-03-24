@@ -26,4 +26,7 @@ export class User {
 
     @OneToMany(() => UserPlant, (userPlant) => userPlant.user)
     userPlants: UserPlant[];
+
+  @Column({nullable: true, unique:true})
+  telegramChatId: string;
 }
