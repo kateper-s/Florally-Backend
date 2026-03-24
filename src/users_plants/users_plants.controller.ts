@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Request, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Request, UseGuards } from '@nestjs/common';
 import { UserPlantsService } from './users_plants.service';
 import { CreateUserPlantDto, UpdateUserPlantDto} from '../dtos/users_plants.dto'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';

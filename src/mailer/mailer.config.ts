@@ -1,7 +1,5 @@
 import { MailerOptions } from "@nestjs-modules/mailer";
-import { EjsAdapter } from "@nestjs-modules/mailer/dist/adapters/ejs.adapter";
 import { ConfigService } from "@nestjs/config";
-import { join } from "path";
 
 export const getMailConfig = async (
   configService: ConfigService,

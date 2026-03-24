@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, Timestamp } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity()
 export class Event {
@@ -26,7 +26,7 @@ export class Event {
   @Column()
   user_plants_id: string;
 
-  @Column({ length: 255 })
+  @Column({type: 'varchar', length: 7, nullable: true, default: '#FFFFFF'})
   color: string;
 
   @Column({ length: 1024 })
