@@ -4,12 +4,18 @@ import { User } from "./user.entity";
 import { Repository } from "typeorm";
 import { CreateUserInternalDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
 import { checkPassword, encryptPassword } from "src/utils/auth.utils";
+import { UserPlant } from "src/users_plants/users_plants.entity";
+import { UserRoom } from "src/user_rooms/user_rooms.entity";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserPlant)
+    private readonly userPlantRepository: Repository<UserPlant>,
+    @InjectRepository(UserRoom)
+    private readonly userRoomRepository: Repository<UserRoom>,
   ) {}
 
   async create(dto: CreateUserInternalDto) {
@@ -150,11 +156,15 @@ export class UserService {
   
   async deleteUser(userId: string) {
     const user = await this.getById(userId);
-    if (user) {
-      await this.userRepository.remove(user);
-      return true;
+    if (!user) {
+      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
     }
-    return false;
+    
+    await this.userPlantRepository.delete({ user: { id: userId } });
+    await this.userRoomRepository.delete({ user_id: userId });
+    await this.userRepository.remove(user);
+
+    return { message: 'Пользователь успешно удален' };
   }
 
   async activateUser(userId: string) {
