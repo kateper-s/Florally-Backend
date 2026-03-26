@@ -13,8 +13,9 @@ import { UserPlantsModule } from "./users_plants/users_plants.module"
 import { RedisModule } from "./redis/redis.module";
 import { MailerModule } from "./mailer/mailer.module";
 import { UserRoom } from "./user_rooms/user_rooms.entity";
-import { UserRoomsService } from "./user_rooms/user_rooms.service";
 import { UserRoomsModule } from "./user_rooms/user_rooms.module";
+import { CommentModule } from "./comments/comments.module";
+import { Comment } from "./comments/comments.entity";
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { UserRoomsModule } from "./user_rooms/user_rooms.module";
       username: process.env.PG_USERNAME,
       password: process.env.PG_PASSWORD,
       database: process.env.PG_DATABASE,
-      entities: [User, Plant, Event, UserPlant, UserRoom],
+      entities: [User, Plant, Event, UserPlant, UserRoom,Comment],
       synchronize: true,
       // autoLoadEntities: true
     }),
@@ -39,7 +40,8 @@ import { UserRoomsModule } from "./user_rooms/user_rooms.module";
     RedisModule,
     MailerModule,
     UserPlantsModule,
-    UserRoomsModule
+    UserRoomsModule,
+    CommentModule
   ],
   controllers: [],
   providers: [],

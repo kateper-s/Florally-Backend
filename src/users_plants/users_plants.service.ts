@@ -46,7 +46,7 @@ export class UserPlantsService {
     async findOneUserPlant(id: string, userId: string): Promise<UserPlant> {
         const userPlant = await this.userPlantRepository.findOne({
             where: { id: id, user: { id: userId } },
-            relations: ['plant', 'room']
+            relations: ['plant', 'room', 'comments']
         });
 
         if (!userPlant) {
