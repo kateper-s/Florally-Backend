@@ -18,7 +18,7 @@ export class UserPlant {
     @JoinColumn({name: 'plant_id'})
     plant: Plant;
 
-    @OneToMany(() => Comment, (comment) => comment)
+    @OneToMany(() => Comment, (comment) => comment.userPlant)
     comments: Comment[];
 
     @Column({type: 'varchar', length: 7, nullable: true, default: '#FFFFFF'})
