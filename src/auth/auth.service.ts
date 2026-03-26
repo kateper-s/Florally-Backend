@@ -15,7 +15,8 @@ export class AuthService {
   private readonly VERIFIED_PREFIX = "verified:";
   private readonly CONFIRM_PREFIX = "confirm:";
   private readonly CONFIRM_TTL = 36000;
-  private readonly CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+  private readonly RECOVERY_CODE_TTL = 600;
+  private readonly VERIFIED_TOKEN_TTL = 300;
   private isCleanupRunning = false;
 
   constructor(
@@ -25,80 +26,42 @@ export class AuthService {
     private readonly mailerService: MailerService,
   ) {}
 
-  /*
-   * Очистка неподтвержденных пользователей
-   * Запускается каждые 24 часа
-   */
   @Interval(24 * 60 * 60 * 1000)
   async cleanupUnconfirmedUsers() {
-    if (this.isCleanupRunning) {
-      console.log('Очистка уже выполняется');
-      return;
-    }
-
+    if (this.isCleanupRunning) return;
     this.isCleanupRunning = true;
-    console.log('Запуск плановой очистки неподтвержденных пользователей...');
-    const startTime = Date.now();
 
     try {
       const confirmKeys = await this.redisService.keys(`${this.CONFIRM_PREFIX}*`);
-      console.log(`Найдено ключей подтверждения: ${confirmKeys.length}`);
-      
       const now = Date.now();
-      let deletedCount = 0;
-      let errorCount = 0;
 
       for (const key of confirmKeys) {
         try {
           const tokenDataStr = await this.redisService.get(key);
-          if (!tokenDataStr) {
-            continue;
-          }
+          if (!tokenDataStr) continue;
 
           const tokenData = JSON.parse(tokenDataStr);
-          
           if (!tokenData.userId || !tokenData.createdAt) {
-            console.warn(`Невалидные данные для ключа ${key}`);
             await this.redisService.del(key);
             continue;
           }
+
           const createdAt = new Date(tokenData.createdAt).getTime();
           const ageInHours = (now - createdAt) / (1000 * 60 * 60);
           
           if (ageInHours > 10) {
-            try {
-              const user = await this.userService.getById(tokenData.userId).catch(() => null);
-              
-              if (user && !user.is_enabled) {
-                await this.userService.deleteUser(tokenData.userId);
-                console.log(`Удален неподтвержденный пользователь: ${user.email} (ID: ${user.id})`);
-                deletedCount++;
-              } else if (user && user.is_enabled) {
-                console.log(`Пользователь ${user.email} уже подтвержден, удаляем ключ`);
-              }
-
-              await this.redisService.del(key);
-                  
-            } catch (error) {
-              console.error(`Ошибка при обработке пользователя ${tokenData.userId}:`, error.message);
-              errorCount++;
-
-              if (error.status === 404) {
-                await this.redisService.del(key);
-              }
+            const user = await this.userService.getById(tokenData.userId).catch(() => null);
+            if (user && !user.is_enabled) {
+              await this.userService.deleteUser(tokenData.userId);
             }
+            await this.redisService.del(key);
           }
         } catch (error) {
-          console.error(`Ошибка при обработке ключа ${key}:`, error.message);
-          errorCount++;
+          console.error(`Error processing key ${key}:`, error.message);
         }
       }
-
-      const duration = (Date.now() - startTime) / 1000;
-      console.log(`Очистка завершена за ${duration.toFixed(2)}с. Удалено: ${deletedCount}, ошибок: ${errorCount}`);
-            
     } catch (error) {
-      console.error('Критическая ошибка при очистке:', error);
+      console.error('Cleanup error:', error);
     } finally {
       this.isCleanupRunning = false;
     }
@@ -113,10 +76,7 @@ export class AuthService {
       );
     }
 
-    console.log("Original password:", createUserDto.password);
     const hashedPassword = await encryptPassword(createUserDto.password);
-    console.log("Hashed password:", hashedPassword);
-
     const user = await this.userService.create({
       ...createUserDto,
       password: hashedPassword,
@@ -124,8 +84,8 @@ export class AuthService {
     });
 
     const confirmationToken = crypto.randomBytes(14).toString('hex');
-
     const confirmKey = `${this.CONFIRM_PREFIX}${confirmationToken}`;
+    
     await this.redisService.set(
       confirmKey,
       {
@@ -165,7 +125,6 @@ export class AuthService {
         `,
       });
     } catch (error) {
-      console.error('Ошибка отправки email подтверждения:', error);
       await this.userService.deleteUser(user.id);
       await this.redisService.del(confirmKey);
       throw new HttpException(
@@ -173,8 +132,6 @@ export class AuthService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-    
-    console.log("User created with hashed password");
 
     return {
       success: true,
@@ -199,29 +156,10 @@ export class AuthService {
       );
     }
 
-    let tokenData;
-    try {
-      tokenData = JSON.parse(tokenDataStr);
-    } catch (error) {
-      throw new HttpException(
-        "Ошибка данных подтверждения",
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-    console.log(tokenData);
-    console.log('Keys:', Object.keys(tokenData));
-    let user;
-    try {
-      console.log('Querying user with id:', tokenData.userId);
-      user = await this.userService.getById(tokenData.userId);
-      console.log(user);
-    } catch (error) {
-      await this.redisService.del(confirmKey);
-      throw new HttpException(
-        "Пользователь не найден",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const tokenData = JSON.parse(tokenDataStr);
+    const user = await this.userService.getById(tokenData.userId).catch(() => {
+      throw new HttpException("Пользователь не найден", HttpStatus.BAD_REQUEST);
+    });
 
     if (user.is_enabled) {
       await this.redisService.del(confirmKey);
@@ -232,16 +170,11 @@ export class AuthService {
     }
 
     const updated = await this.userService.activateUser(tokenData.userId);
-    
     if (!updated) {
-      throw new HttpException(
-        "Ошибка при активации пользователя",
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException("Ошибка при активации пользователя", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     await this.redisService.del(confirmKey);
-
     return {
       success: true,
       message: "Email успешно подтвержден. Теперь вы можете войти в систему.",
@@ -251,75 +184,44 @@ export class AuthService {
   async signIn(signInDto: SignInDto) {
     const user = await this.userService.getByEmail(signInDto.email);
 
-    console.log('Попытка входа:', {
-    email: signInDto.email,
-    foundUser: !!user,
-    isEnabledInDb: user?.is_enabled
-  });
-
     if (!user) {
-      throw new HttpException(
-        "Такого пользователя не существует",
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException("Такого пользователя не существует", HttpStatus.NOT_FOUND);
     }
 
     if (!user.is_enabled) {
-      throw new HttpException(
-        "Email не подтвержден. Проверьте почту для подтверждения регистрации",
-        HttpStatus.FORBIDDEN,
-      );
+      throw new HttpException("Email не подтвержден. Проверьте почту для подтверждения регистрации", HttpStatus.FORBIDDEN);
     }
 
     if (!(await checkPassword(signInDto.password, user.password))) {
-      throw new HttpException(
-        "Неверные данные для входа",
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException("Неверные данные для входа", HttpStatus.BAD_REQUEST);
     }
 
-    const payload = {
-      sub: user.id,
-      username: user.username,
-      email: user.email,
-    };
-
+    const payload = { sub: user.id, username: user.username, email: user.email };
     return {
       access_token: await this.jwtService.signAsync(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-      },
+      user: { id: user.id, email: user.email, username: user.username },
     };
   }
 
-  async sendVerificationEmail(email: string, username: string) {
+  async sendVerificationEmail(email: string, username?: string) { 
     const user = await this.userService.getByEmail(email);
-
     if (!user) {
       throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
     }
 
+    const displayName = username || user.username || "Пользователь";
     const isActive = await this.userService.isUserActive(email);
     if (!isActive) {
-      throw new HttpException(
-        "Пользователь не активирован или заблокирован",
-        HttpStatus.FORBIDDEN,
-      );
+      throw new HttpException("Пользователь не активирован или заблокирован", HttpStatus.FORBIDDEN);
     }
 
     const code = crypto.randomInt(100000, 999999).toString();
-
     const recoveryKey = `${this.RECOVERY_PREFIX}${email}`;
+    
     await this.redisService.set(
       recoveryKey,
-      {
-        code,
-        username,
-        createdAt: new Date().toISOString(),
-      },
-      600
+      { code, username: displayName, createdAt: new Date().toISOString() },
+      this.RECOVERY_CODE_TTL
     );
 
     const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
@@ -329,39 +231,29 @@ export class AuthService {
       await this.mailerService.sendMail({
         to: email,
         subject: 'Восстановление пароля',
-        text: `Здравствуйте, ${username}!\n\nВаш код для восстановления пароля: ${code}\n\nКод действителен в течение 5 минут.`,
+        text: `Здравствуйте, ${displayName}!\n\nВаш код для восстановления пароля: ${code}\n\nКод действителен в течение 5 минут.`,
         html: `
-        <h1>Florally</h1>
-        </div>
-        <div class="content">
-          <h2>Здравствуйте, ${username}!</h2>
-          <p>Вы запросили восстановление пароля на Florally.</p>
-          <p>Ваш код для восстановления:</p>
-          <div class="code">${code}</div>
-          <p>Введите этот код в приложении для смены пароля.</p>
-          <p>Код действителен в течение 5 минут.</p>
-          <p>Если вы не запрашивали восстановление пароля, просто проигнорируйте это письмо. Ваш аккаунт в безопасности.</p>
-        </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Florally. Все права защищены.</p>
-          <p>С заботой о ваших растениях ❤️</p>
-        </div>`
+          <h1>Florally</h1>
+          <div class="content">
+            <h2>Здравствуйте, ${displayName}!</h2>
+            <p>Вы запросили восстановление пароля на Florally.</p>
+            <p>Ваш код для восстановления:</p>
+            <div class="code">${code}</div>
+            <p>Введите этот код в приложении для смены пароля.</p>
+            <p>Код действителен в течение 5 минут.</p>
+            <p>Если вы не запрашивали восстановление пароля, просто проигнорируйте это письмо. Ваш аккаунт в безопасности.</p>
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Florally. Все права защищены.</p>
+            <p>С заботой о ваших растениях ❤️</p>
+          </div>`
       });
     } catch (error) {
-      console.error('Ошибка отправки email:', error);
       await this.redisService.del(recoveryKey);
-      throw new HttpException(
-        'Ошибка при отправке кода на email',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new HttpException("Ошибка при отправке кода на email", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    console.log(`Код восстановления для ${email}: ${code}`);
-
-    return {
-      success: true,
-      message: "Код отправлен на email",
-    };
+    return { success: true, message: "Код отправлен на email" };
   }
 
   async checkVerificationCode(email: string, code: string) {
@@ -372,63 +264,40 @@ export class AuthService {
       throw new HttpException("Код не найден", HttpStatus.BAD_REQUEST);
     }
 
-    let recoveryData;
-    try {
-      recoveryData = JSON.parse(recoveryDataStr);
-    } catch (error) {
-      throw new HttpException(
-        "Ошибка данных восстановления",
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
+    const recoveryData = JSON.parse(recoveryDataStr);
     if (recoveryData.code !== code) {
       throw new HttpException("Неверный код", HttpStatus.BAD_REQUEST);
     }
 
+    await this.redisService.del(recoveryKey);
     const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
     await this.redisService.set(
       verifiedKey,
-      {
-        email,
-        verifiedAt: new Date().toISOString(),
-        username: recoveryData.username,
-      },
-      300
+      { email, verifiedAt: new Date().toISOString(), username: recoveryData.username },
+      this.VERIFIED_TOKEN_TTL
     );
 
-    return {
-      success: true,
-      message: "Код подтвержден",
-      verified: true,
-    };
+    return { success: true, message: "Код подтвержден", verified: true };
   }
 
-async recoverPassword(email: string, newPassword: string) {
-  
-  const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
-  const verifiedDataStr = await this.redisService.get(verifiedKey);
+  async recoverPassword(email: string, newPassword: string) {
+    const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
+    const verifiedDataStr = await this.redisService.get(verifiedKey);
 
-  if (!verifiedDataStr) {
-    throw new HttpException("Код не был подтвержден", HttpStatus.BAD_REQUEST);
+    if (!verifiedDataStr) {
+      throw new HttpException("Код не был подтвержден", HttpStatus.BAD_REQUEST);
+    }
+
+    const user = await this.userService.getByEmail(email);
+    if (!user) {
+      throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+    }
+
+    const hashedPassword = await encryptPassword(newPassword);
+    await this.userService.updatePassword(user.id, hashedPassword);
+
+    await this.redisService.del(verifiedKey);
+
+    return { success: true, message: "Пароль успешно изменен" };
   }
-
-  const user = await this.userService.getByEmail(email);
-  if (!user) {
-    throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
-  }
-
-  const hashedPassword = await encryptPassword(newPassword);
-  
-  await this.userService.updatePassword(user.id, hashedPassword);
-
-  const recoveryKey = `${this.RECOVERY_PREFIX}${email}`;
-  await this.redisService.del(recoveryKey);
-  await this.redisService.del(verifiedKey);
-
-  return {
-    success: true,
-    message: "Пароль успешно изменен",
-  };
-}
 }
