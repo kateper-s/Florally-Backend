@@ -6,7 +6,7 @@ import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 import { RedisService } from "../redis/redis.service";
 import { MailerService } from "@nestjs-modules/mailer";
 import { Interval } from "@nestjs/schedule";
-import { API_URL } from "src/config/url.config";
+import { FRONT_API_URL } from "src/config/url.config";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -128,15 +128,15 @@ export class AuthService {
     const confirmKey = `${this.CONFIRM_PREFIX}${confirmationToken}`;
     await this.redisService.set(
       confirmKey,
-      JSON.stringify({
+      {
         userId: user.id,
         email: user.email,
         createdAt: new Date().toISOString(),
-      }),
+      },
       this.CONFIRM_TTL
     );
 
-    const confirmationLink = `${API_URL}/auth/signup/confirmation/${confirmationToken}`;
+    const confirmationLink = `${FRONT_API_URL}/auth/signup/confirmation/${confirmationToken}`;
 
     try {
       await this.mailerService.sendMail({
@@ -208,14 +208,27 @@ export class AuthService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    const user = await this.userService.getById(tokenData.userId).catch(() => null);
-    if (!user) {
+    console.log(tokenData);
+    console.log('Keys:', Object.keys(tokenData));
+    let user;
+    try {
+      console.log('Querying user with id:', tokenData.userId);
+      user = await this.userService.getById(tokenData.userId);
+      console.log(user);
+    } catch (error) {
       await this.redisService.del(confirmKey);
       throw new HttpException(
         "Пользователь не найден",
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    if (user.is_enabled) {
+      await this.redisService.del(confirmKey);
+      return {
+        success: true,
+        message: "Email уже был подтвержден ранее. Вы можете войти в систему.",
+      };
     }
 
     const updated = await this.userService.activateUser(tokenData.userId);
@@ -237,6 +250,13 @@ export class AuthService {
 
   async signIn(signInDto: SignInDto) {
     const user = await this.userService.getByEmail(signInDto.email);
+
+    console.log('Попытка входа:', {
+    email: signInDto.email,
+    foundUser: !!user,
+    isEnabledInDb: user?.is_enabled
+  });
+
     if (!user) {
       throw new HttpException(
         "Такого пользователя не существует",
@@ -289,23 +309,16 @@ export class AuthService {
       );
     }
 
-    if (user.username !== username) {
-      throw new HttpException(
-        "Неверное имя пользователя",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const code = crypto.randomInt(100000, 999999).toString();
 
     const recoveryKey = `${this.RECOVERY_PREFIX}${email}`;
     await this.redisService.set(
       recoveryKey,
-      JSON.stringify({
+      {
         code,
         username,
         createdAt: new Date().toISOString(),
-      }),
+      },
       600
     );
 
@@ -376,11 +389,11 @@ export class AuthService {
     const verifiedKey = `${this.VERIFIED_PREFIX}${email}`;
     await this.redisService.set(
       verifiedKey,
-      JSON.stringify({
+      {
         email,
         verifiedAt: new Date().toISOString(),
         username: recoveryData.username,
-      }),
+      },
       300
     );
 

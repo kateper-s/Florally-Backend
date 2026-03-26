@@ -34,7 +34,7 @@ export class UserService {
       email: newUserEmail,
       username: newUsername,
       password: dto.password,
-      is_enabled: dto.is_enabled ?? true,
+      is_enabled: false,
       created_at: new Date(),
       updated_at: new Date(),
     });
@@ -81,8 +81,12 @@ export class UserService {
   }
 
   async getById(id: string) {
+    if (!id) {
+    throw new HttpException("ID пользователя не определен", HttpStatus.BAD_REQUEST);
+  }
+    console.log('Querying user with id:', id);
     const user = await this.userRepository.findOne({
-      where: { id },
+      where: { id: id },
       select: ['id', 'email', 'username', 'is_enabled', 'created_at', 'updated_at']
     });
     

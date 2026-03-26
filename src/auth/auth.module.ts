@@ -6,10 +6,12 @@ import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { RedisModule } from "src/redis/redis.module";
 
 @Module({
   imports: [
     UserModule,
+    RedisModule,
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
