@@ -34,21 +34,28 @@ export class SignInDto {
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
-  @ApiProperty({ example: "NameNew", description: "User's new name" })
-  username: string;
+  @ApiProperty({ example: "NameNew", description: "User's new name", required: false })
+  username?: string;
 
   @IsOptional()
   @IsEmail()
-  @ApiProperty({ example: "newemail@ya.ru", description: "User's new email" })
-  email: string;
+  @ApiProperty({ example: "newemail@ya.ru", description: "User's new email", required: false })
+  email?: string;
 
   @IsOptional()
   @IsString()
+  @ApiProperty({ example: "oldpassword123", description: "Current password for verification", required: false })
+  oldPassword?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters long" })
   @ApiProperty({
     example: "newpassword123",
-    description: "User's new password",
+    description: "User's new password (min 6 chars)",
+    required: false
   })
-  password: string;
+  password?: string;
 }
 
 export class SendVerificationDto {

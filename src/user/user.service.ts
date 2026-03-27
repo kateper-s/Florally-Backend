@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./user.entity";
 import { Repository } from "typeorm";
-import { CreateUserInternalDto, UpdateUserDto, ChangePasswordDto } from "src/dtos/user.dto";
+import { CreateUserInternalDto, UpdateUserDto } from "src/dtos/user.dto";
 import { checkPassword, encryptPassword } from "src/utils/auth.utils";
 
 @Injectable()
@@ -43,46 +43,70 @@ export class UserService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    let user;
-    if (dto.password) {
-      user = await this.getByIdWithPassword(id);
-    } else {
-      user = await this.getById(id);
-    }
-
-    if (dto.username && dto.username !== user.username) {
-      const existing = await this.getByUsername(dto.username);
-      if (existing) throw new HttpException("Имя пользователя уже занято", HttpStatus.BAD_REQUEST);
-      user.username = dto.username;
-    }
-
-    if (dto.email) {
-      if (!(await this.getByEmail(dto.email))) {
-        user.email = dto.email;
-      } else {
-        throw new HttpException(
-          "Email уже используется",
-          HttpStatus.BAD_REQUEST,
-        );
+      const user = await this.getByIdWithPassword(id);
+      
+      if (!user) {
+          throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
       }
-    }
 
-    if (dto.password) {
-      user.password = await encryptPassword(dto.password);
-    }
+      console.log("Updating user with ID:", user.id);
+      console.log("Current user password hash:", user.password);
 
-    user.updated_at = new Date();
-    return await this.userRepository.save(user);
+      if (dto.password) {
+          if (!dto.oldPassword) {
+              throw new HttpException("Необходимо указать старый пароль для смены", HttpStatus.BAD_REQUEST);
+          }
+
+          const isOldPasswordValid = await checkPassword(dto.oldPassword, user.password);
+          if (!isOldPasswordValid) {
+              throw new HttpException("Неверный старый пароль", HttpStatus.BAD_REQUEST);
+          }
+
+          const isSamePassword = await checkPassword(dto.password, user.password);
+          if (isSamePassword) {
+              throw new HttpException("Новый пароль должен отличаться от старого", HttpStatus.BAD_REQUEST);
+          }
+          
+          user.password = await encryptPassword(dto.password);
+          console.log("New password hash for user", user.id, ":", user.password);
+      }
+
+      if (dto.username && dto.username !== user.username) {
+          const existing = await this.userRepository.findOne({
+              where: { username: dto.username }
+          });
+          if (existing && existing.id !== id) {
+              throw new HttpException("Имя пользователя уже занято", HttpStatus.BAD_REQUEST);
+          }
+          user.username = dto.username;
+      }
+
+      if (dto.email && dto.email !== user.email) {
+          const existing = await this.userRepository.findOne({
+              where: { email: dto.email }
+          });
+          if (existing && existing.id !== id) {
+              throw new HttpException("Email уже используется", HttpStatus.BAD_REQUEST);
+          }
+          user.email = dto.email;
+      }
+
+      user.updated_at = new Date();
+      
+      const savedUser = await this.userRepository.save(user);
+      console.log("Saved user ID:", savedUser.id);
+
+      const { password, ...result } = savedUser;
+      return result;
   }
 
   async getById(id: string) {
     if (!id) {
-    throw new HttpException("ID пользователя не определен", HttpStatus.BAD_REQUEST);
-  }
-    console.log('Querying user with id:', id);
+      throw new HttpException("ID пользователя не определен", HttpStatus.BAD_REQUEST);
+    }
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ['id', 'email', 'username', 'is_enabled', 'created_at', 'updated_at']
+      select: ["id", "email", "username", "is_enabled", "created_at", "updated_at"]
     });
     
     if (!user) {
@@ -93,17 +117,17 @@ export class UserService {
   }
 
   async getByIdWithPassword(id: string) {
-  const user = await this.userRepository.findOne({
-    where: { id },
-    select: ['id', 'email', 'username', 'password', 'is_enabled', 'created_at', 'updated_at']
-  });
-  
-  if (!user) {
-    throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: ["id", "email", "username", "password", "is_enabled", "created_at", "updated_at"]
+    });
+    
+    if (!user) {
+      throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+    }
+    
+    return user;
   }
-  
-  return user;
-}
 
   async getByEmail(email: string) {
     return await this.userRepository.findOneBy({ email });
@@ -118,24 +142,6 @@ export class UserService {
     user.password = hashedPassword;
     await this.userRepository.save(user);
     return true;
-  }
-
-  async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = await this.getByIdWithPassword(userId);
-
-    const isOldPasswordValid = await checkPassword(dto.oldPassword, user.password);
-    if (!isOldPasswordValid) {
-      throw new HttpException('Неверный старый пароль', HttpStatus.BAD_REQUEST);
-    }
-
-    const isSamePassword = await checkPassword(dto.newPassword, user.password);
-    if (isSamePassword) {
-      throw new HttpException('Новый пароль должен отличаться от старого', HttpStatus.BAD_REQUEST);
-    }
-
-    user.password = await encryptPassword(dto.newPassword);
-    await this.userRepository.save(user);
-    return { message: 'Пароль успешно изменён' };
   }
 
   async isUserActive(email: string): Promise<boolean> {
@@ -158,10 +164,6 @@ export class UserService {
 
   async activateUser(userId: string) {
     const user = await this.getById(userId);
-    if (!user) {
-      throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
-    }
-    
     user.is_enabled = true;
     await this.userRepository.save(user);
     return true;

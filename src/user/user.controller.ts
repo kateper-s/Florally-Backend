@@ -24,11 +24,4 @@ export class UserController {
     const id = req["user"]["sub"];
     return await this.userService.update(id, dto);
   }
-
-  @Post('change-password')
-  @ApiOperation({ summary: 'Change user password' })
-  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
-    const id = req.user.sub;
-    return await this.userService.changePassword(id, dto);
-  }
 }
