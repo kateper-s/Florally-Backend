@@ -50,15 +50,10 @@ export class UserService {
       user = await this.getById(id);
     }
 
-    if (dto.username) {
-      if (!(await this.getByUsername(dto.username))) {
-        user.username = dto.username;
-      } else {
-        throw new HttpException(
-          "Имя пользователя уже занято",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (dto.username && dto.username !== user.username) {
+      const existing = await this.getByUsername(dto.username);
+      if (existing) throw new HttpException("Имя пользователя уже занято", HttpStatus.BAD_REQUEST);
+      user.username = dto.username;
     }
 
     if (dto.email) {
