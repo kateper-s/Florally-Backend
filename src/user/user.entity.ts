@@ -25,9 +25,17 @@ export class User {
   @Column()
   updated_at: Date;
 
+<<<<<<< HEAD
   @OneToMany(() => UserPlant, (userPlant) => userPlant.user)
   userPlants: UserPlant[];
 
   @OneToMany(() => UserRoom, room => room.user)
   userRooms: UserRoom[];
+=======
+    @OneToMany(() => UserPlant, (userPlant) => userPlant.user)
+    userPlants: UserPlant[];
+
+  @Column({nullable: true, unique:true})
+  telegramChatId: string;
+>>>>>>> origin/telegram-notifications-bot
 }
