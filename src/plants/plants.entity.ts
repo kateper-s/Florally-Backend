@@ -20,4 +20,7 @@ export class Plant {
 
     @OneToMany(() => UserPlant, (userPlant) => userPlant.plant)
     userPlants: UserPlant[];
+
+    @Column({length: 1024, nullable: true})
+    recommendations: string;
 }
