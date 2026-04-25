@@ -49,9 +49,6 @@ export class UserService {
           throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
       }
 
-      console.log("Updating user with ID:", user.id);
-      console.log("Current user password hash:", user.password);
-
       if (dto.password) {
           if (!dto.oldPassword) {
               throw new HttpException("Необходимо указать старый пароль для смены", HttpStatus.BAD_REQUEST);
@@ -68,7 +65,6 @@ export class UserService {
           }
           
           user.password = await encryptPassword(dto.password);
-          console.log("New password hash for user", user.id, ":", user.password);
       }
 
       if (dto.username && dto.username !== user.username) {

@@ -22,8 +22,11 @@ export class Event {
   data: Date;
 
   @ManyToOne(() => User, user => user.userPlants)
-      @JoinColumn({name: 'user_id'})
-      user: User;
+  @JoinColumn({name: 'user_id'})
+  user: User;
+
+  @Column()
+  user_id: string;
 
   @Column()
   user_plants_id: string;
