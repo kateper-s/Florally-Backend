@@ -26,7 +26,7 @@ export class AuthService {
     private readonly mailerService: MailerService,
   ) {}
 
-  @Interval(60 * 60 * 1000)
+  @Interval(15 * 60 * 1000)
   async cleanupUnconfirmedUsers() {
     if (this.isCleanupRunning) return;
     this.isCleanupRunning = true;
