@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Query} from '@nestjs/common';
 import { PlantsService } from './plants.service';
-import { CreatePlantDto } from '../dtos/plants.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('plants')

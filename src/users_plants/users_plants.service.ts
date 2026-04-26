@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPlant } from './users_plants.entity';
-import { CreateUserPlantDto, UpdateUserPlantDto } from '../dtos/users_plants.dto';
+import { CreateUserPlantDto, UpdateUserPlantDto, CreateCustomUserPlantDto } from '../dtos/users_plants.dto';
 import { UserRoom } from '../user_rooms/user_rooms.entity';
 
 @Injectable()
@@ -18,18 +18,42 @@ export class UserPlantsService {
         const newUserPlant = this.userPlantRepository.create({
             user: { id: userId },
             plant: { id: dto.plantId },
-            color: dto.color
+            color: dto.color,
+            is_custom: false,
         });
 
         if (dto.roomId) {
             const room = await this.userRoomRepository.findOne({
                 where: { id: dto.roomId, user_id: userId }
             });
-            
             if (!room) {
                 throw new NotFoundException(`Комната с ID ${dto.roomId} не найдена`);
             }
-            
+            newUserPlant.room = room;
+        }
+
+        return this.userPlantRepository.save(newUserPlant);
+    }
+
+    async createCustomPlant(dto: CreateCustomUserPlantDto, userId: string): Promise<UserPlant> {
+        const newUserPlant = this.userPlantRepository.create({
+            user: { id: userId },
+            plant: null,
+            is_custom: true,
+            custom_name: dto.name,
+            custom_description: dto.description,
+            custom_season: dto.season,
+            custom_photo: dto.photo,
+            color: dto.color || '#FFFFFF',
+        });
+
+        if (dto.roomId) {
+            const room = await this.userRoomRepository.findOne({
+                where: { id: dto.roomId, user_id: userId }
+            });
+            if (!room) {
+                throw new NotFoundException(`Комната с ID ${dto.roomId} не найдена`);
+            }
             newUserPlant.room = room;
         }
 
@@ -48,7 +72,6 @@ export class UserPlantsService {
             where: { id: id, user: { id: userId } },
             relations: ['plant', 'room', 'comments']
         });
-
         if (!userPlant) {
             throw new NotFoundException(`Personal plant with ID ${id} not found`);
         }
@@ -70,15 +93,12 @@ export class UserPlantsService {
                 const room = await this.userRoomRepository.findOne({
                     where: { id: dto.roomId, user_id: userId }
                 });
-                
                 if (!room) {
                     throw new NotFoundException(`Комната с ID ${dto.roomId} не найдена`);
                 }
-                
                 if (userPlant.room && userPlant.room.id !== dto.roomId) {
                     throw new BadRequestException('Растение уже находится в комнате');
                 }
-                
                 userPlant.room = room;
             }
         }
@@ -86,11 +106,9 @@ export class UserPlantsService {
         if (dto.color) {
             userPlant.color = dto.color;
         }
-        
         if (dto.plantId) {
             userPlant.plant = { id: dto.plantId } as any;
         }
-        
         return this.userPlantRepository.save(userPlant);
     }
 }

@@ -1,23 +1,30 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Request, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Request, UseGuards } from '@nestjs/common';
 import { UserPlantsService } from './users_plants.service';
-import { CreateUserPlantDto, UpdateUserPlantDto} from '../dtos/users_plants.dto'
+import { CreateUserPlantDto, UpdateUserPlantDto, CreateCustomUserPlantDto } from '../dtos/users_plants.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../guard/jwt-auth.guard'
+import { JwtAuthGuard } from '../guard/jwt-auth.guard';
 
 @ApiBearerAuth()
 @ApiTags('user plants')
 @UseGuards(JwtAuthGuard)
 @Controller('users_plants')
 export class UserPlantsController {
-    constructor(private readonly userPlantsService: UserPlantsService){}
+    constructor(private readonly userPlantsService: UserPlantsService) {}
 
     @Post()
-    @ApiOperation({ summary: "Add plant to user's collection" })
+    @ApiOperation({ summary: "Add plant to user's collection from catalog" })
     add(@Body() dto: CreateUserPlantDto, @Request() req) {
         const userId = req.user.id;
         return this.userPlantsService.addPlantToUser(dto, userId);
     }
-    
+
+    @Post('custom')
+    @ApiOperation({ summary: "Create custom plant for user (not stored in global catalog)" })
+    createCustom(@Body() dto: CreateCustomUserPlantDto, @Request() req) {
+        const userId = req.user.id;
+        return this.userPlantsService.createCustomPlant(dto, userId);
+    }
+
     @Get()
     @ApiOperation({ summary: "Returns all plants for current user" })
     findAll(@Request() req) {

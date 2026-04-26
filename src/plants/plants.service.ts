@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Plant } from './plants.entity';
-import { CreatePlantDto } from '../dtos/plants.dto';
 
 @Injectable()
 export class PlantsService {
