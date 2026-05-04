@@ -1,112 +1,145 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Telegraf, Context } from 'telegraf';
-import { SendMessageOptions } from './interfaces/telegram.interface';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Context, Telegraf } from "telegraf";
+import { TelegramLinkService } from "./telegram-link.service";
+import { SendMessageOptions } from "./interfaces/telegram.interface";
+import { UserService } from "src/user/user.service";
 
 @Injectable()
-export class TelegramService implements OnModuleInit {
+export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
-  private bot: Telegraf;
-  private readonly botToken: string;
-  private readonly webhookDomain: string;
-  private readonly webhookPath: string;
+  private readonly botToken?: string;
+  private readonly bot?: Telegraf;
+  private launched = false;
 
-  constructor(private configService: ConfigService) {
-    this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
-    this.webhookDomain = this.configService.get<string>('TELEGRAM_WEBHOOK_DOMAIN');
-    this.webhookPath = this.configService.get<string>('TELEGRAM_WEBHOOK_PATH');
-    
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly telegramLinkService: TelegramLinkService,
+    private readonly userService: UserService,
+  ) {
+    this.botToken = this.configService.get<string>("TELEGRAM_BOT_TOKEN");
     if (!this.botToken) {
-      throw new Error('TELEGRAM_BOT_TOKEN is not defined');
+      this.logger.warn("TELEGRAM_BOT_TOKEN is not defined, bot is disabled");
+      return;
     }
-    
+
     this.bot = new Telegraf(this.botToken);
   }
 
-  async onModuleInit() {
-    await this.setupWebhook();
-    this.setupBotCommands();
+  isEnabled(): boolean {
+    return Boolean(this.bot);
   }
 
-  private async setupWebhook() {
-    try {
-      if (this.webhookDomain && this.webhookPath) {
-        const webhookUrl = `${this.webhookDomain}${this.webhookPath}`;
-        await this.bot.telegram.setWebhook(webhookUrl);
-        this.logger.log(`Webhook set to: ${webhookUrl}`);
-      } else {
-        this.logger.warn('Webhook configuration missing, using polling mode');
-        await this.bot.launch();
-      }
-    } catch (error) {
-      this.logger.error(`Failed to setup webhook: ${error.message}`);
-      throw error;
+  async onModuleInit() {
+    if (!this.bot) {
+      return;
+    }
+
+    this.setupBotCommands();
+    this.setupTextHandler();
+    await this.bot.launch();
+    this.launched = true;
+    this.logger.log("Telegram bot started in polling mode");
+  }
+
+  async onModuleDestroy() {
+    if (this.bot && this.launched) {
+      this.bot.stop("application shutdown");
+      this.launched = false;
     }
   }
 
   private setupBotCommands() {
-    // Устанавливаем команды бота
+    if (!this.bot) {
+      return;
+    }
+
+    this.bot.start(async (ctx) => {
+      const chatId = String(ctx.from?.id ?? "");
+      if (!chatId) {
+        return;
+      }
+
+      const linkedUser = await this.userService.getByTelegramChatId(chatId);
+      if (linkedUser) {
+        await ctx.reply(
+          "Ваш Telegram уже привязан к Florally. Здесь вы будете получать уведомления о событиях.",
+        );
+        return;
+      }
+
+      await this.telegramLinkService.markAwaitingCode(chatId);
+      await ctx.reply(
+        "Введите код подключения из личного кабинета Florally, чтобы связать аккаунт.",
+      );
+    });
+
+    this.bot.help(async (ctx) => {
+      await ctx.reply(
+        "Для привязки аккаунта используйте /start и введите код подключения с сайта Florally.",
+      );
+    });
+
     this.bot.telegram.setMyCommands([
-      { command: 'start', description: 'Start the bot' },
-      { command: 'help', description: 'Get help' },
-      { command: 'info', description: 'Get information' },
+      { command: "start", description: "Привязать аккаунт Florally" },
+      { command: "help", description: "Справка по боту" },
     ]);
   }
 
-  async handleWebhook(body: any): Promise<void> {
-    try {
-      await this.bot.handleUpdate(body);
-    } catch (error) {
-      this.logger.error(`Error handling webhook: ${error.message}`);
-      throw error;
+  private setupTextHandler() {
+    if (!this.bot) {
+      return;
     }
+
+    this.bot.on("text", async (ctx: Context) => {
+      const chatId = String(ctx.from?.id ?? "");
+      const message = "message" in ctx.update ? ctx.update.message : null;
+      const text = message && "text" in message ? message.text : undefined;
+
+      if (!chatId || !text || text.startsWith("/")) {
+        return;
+      }
+
+      const isAwaitingCode = await this.telegramLinkService.isAwaitingCode(chatId);
+      if (!isAwaitingCode) {
+        await ctx.reply("Чтобы подключить Florally, отправьте /start.");
+        return;
+      }
+
+      try {
+        await this.telegramLinkService.connectChatByCode(text, chatId);
+        await ctx.reply(
+          "Рады приветствовать вас в Florally! Здесь вы будете получать уведомления об установленных вами событиях.",
+        );
+      } catch (error) {
+        await ctx.reply(error?.message ?? "Не удалось привязать аккаунт. Попробуйте снова.");
+      }
+    });
   }
 
   async sendMessage(options: SendMessageOptions): Promise<void> {
-    try {
-      await this.bot.telegram.sendMessage(options.chatId, options.text, {
-        parse_mode: options.parseMode,
-        reply_markup: options.replyMarkup,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to send message: ${error.message}`);
-      throw error;
+    if (!this.bot) {
+      throw new Error("Telegram bot is not configured");
     }
+
+    await this.bot.telegram.sendMessage(options.chatId, options.text, {
+      parse_mode: options.parseMode,
+      reply_markup: options.replyMarkup,
+    });
   }
 
-  async sendPhoto(chatId: number, photo: string, caption?: string): Promise<void> {
-    try {
-      await this.bot.telegram.sendPhoto(chatId, photo, { caption });
-    } catch (error) {
-      this.logger.error(`Failed to send photo: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async getBotInfo() {
-    try {
-      return await this.bot.telegram.getMe();
-    } catch (error) {
-      this.logger.error(`Failed to get bot info: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Методы для интеграции с вашим сайтом
   async notifyUser(chatId: number, message: string): Promise<void> {
     await this.sendMessage({
       chatId,
       text: message,
-      parseMode: 'HTML',
     });
   }
 
-  async broadcastToUsers(chatIds: number[], message: string): Promise<void> {
-    const promises = chatIds.map(chatId => 
-      this.sendMessage({ chatId, text: message }).catch(error => 
-        this.logger.error(`Failed to send to ${chatId}: ${error.message}`)
-      )
-    );
-    await Promise.all(promises);
+  async getBotInfo() {
+    if (!this.bot) {
+      throw new Error("Telegram bot is not configured");
+    }
+
+    return await this.bot.telegram.getMe();
   }
 }

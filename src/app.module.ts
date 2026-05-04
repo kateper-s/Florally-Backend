@@ -16,6 +16,7 @@ import { UserRoom } from "./user_rooms/user_rooms.entity";
 import { UserRoomsModule } from "./user_rooms/user_rooms.module";
 import { CommentModule } from "./comments/comments.module";
 import { Comment } from "./comments/comments.entity";
+import { TelegramModule } from "./telegram/telegram.module";
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { Comment } from "./comments/comments.entity";
     MailerModule,
     UserPlantsModule,
     UserRoomsModule,
-    CommentModule
+    CommentModule,
+    TelegramModule,
   ],
   controllers: [],
   providers: [],

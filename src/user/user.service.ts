@@ -102,7 +102,7 @@ export class UserService {
     }
     const user = await this.userRepository.findOne({
       where: { id: id },
-      select: ["id", "email", "username", "is_enabled", "created_at", "updated_at"]
+      select: ["id", "email", "username", "is_enabled", "created_at", "updated_at", "telegramChatId"]
     });
     
     if (!user) {
@@ -115,7 +115,7 @@ export class UserService {
   async getByIdWithPassword(id: string) {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ["id", "email", "username", "password", "is_enabled", "created_at", "updated_at"]
+      select: ["id", "email", "username", "password", "is_enabled", "created_at", "updated_at", "telegramChatId"]
     });
     
     if (!user) {
@@ -131,6 +131,23 @@ export class UserService {
 
   async getByUsername(username: string) {
     return await this.userRepository.findOneBy({ username });
+  }
+
+  async getByTelegramChatId(chatId: string) {
+    return await this.userRepository.findOne({
+      where: { telegramChatId: chatId },
+    });
+  }
+
+  async setTelegramChatId(userId: string, chatId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException("Пользователь не найден", HttpStatus.NOT_FOUND);
+    }
+
+    user.telegramChatId = chatId;
+    user.updated_at = new Date();
+    return await this.userRepository.save(user);
   }
 
   async updatePassword(userId: string, hashedPassword: string) {
