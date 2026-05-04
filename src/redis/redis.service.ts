@@ -29,6 +29,15 @@ export class RedisService {
     }
   }
 
+  async setIfNotExists(key: string, value: any, ttl?: number): Promise<boolean> {
+    const payload = JSON.stringify(value);
+    const result = ttl
+      ? await this.client.set(key, payload, { EX: ttl, NX: true })
+      : await this.client.set(key, payload, { NX: true });
+
+    return result === "OK";
+  }
+
   async get(key: string) {
     const value = await this.client.get(key);
     return value;
