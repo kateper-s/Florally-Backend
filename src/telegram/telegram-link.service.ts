@@ -1,10 +1,11 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { randomBytes } from "crypto";
 import { RedisService } from "src/redis/redis.service";
 import { UserService } from "src/user/user.service";
 
 @Injectable()
 export class TelegramLinkService {
+  private readonly logger = new Logger(TelegramLinkService.name);
   private readonly CODE_TTL_SECONDS = 10 * 60;
   private readonly AWAIT_CODE_TTL_SECONDS = 15 * 60;
   private readonly CODE_PREFIX = "telegram:link:code:";
@@ -81,10 +82,29 @@ export class TelegramLinkService {
     }
 
     const linkedUser = await this.userService.setTelegramChatId(linkData.userId, chatId);
+    this.logger.log(`User ${linkData.userId} linked with chat ${chatId}, result: ${linkedUser?.telegramChatId}`);
+    
+    const verification = await this.userService.getByTelegramChatId(chatId);
+    if (!verification || verification.id !== linkData.userId) {
+      this.logger.error(`Linking verification failed for userId ${linkData.userId}, chatId ${chatId}`);
+      throw new HttpException("Не удалось сохранить привязку", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    
     await this.redisService.del(`${this.CODE_PREFIX}${code}`);
     await this.redisService.del(`${this.USER_PREFIX}${linkData.userId}`);
     await this.clearAwaitingCode(chatId);
 
     return linkedUser;
+  }
+
+  async unlinkChat(chatId: string): Promise<boolean> {
+    const user = await this.userService.getByTelegramChatId(chatId);
+    if (!user) {
+      throw new HttpException("Аккаунт не привязан к Telegram", HttpStatus.BAD_REQUEST);
+    }
+    
+    const unlinkedUser = await this.userService.setTelegramChatId(user.id, null);
+    this.logger.log(`User ${user.id} unlinked from chat ${chatId}`);
+    return unlinkedUser?.telegramChatId === null;
   }
 }

@@ -33,4 +33,13 @@ export class User {
 
   @Column({nullable: true, unique:true})
   telegramChatId: string;
+
+  @Column({ type: "time", nullable: true, default: "10:00:00" })
+  telegram_digest_time: string;
+
+  @Column({ default: true })
+  telegram_reminders_enabled: boolean;
+
+  @Column({ default: true })
+  telegram_daily_digest_enabled: boolean;
 }

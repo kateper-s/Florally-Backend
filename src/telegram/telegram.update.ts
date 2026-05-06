@@ -2,12 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Ctx, Start, Help, Hears, On, Command, Action } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { TelegramService } from './telegram.service';
+import { TelegramReminderService } from './telegram-reminder.service';
 
 @Injectable()
 export class TelegramUpdate {
   private readonly logger = new Logger(TelegramUpdate.name);
 
-  constructor(private telegramService: TelegramService) {}
+  constructor(private telegramService: TelegramService,
+    private telegramReminderService: TelegramReminderService,
+  ) {}
 
   @Start()
   async startCommand(@Ctx() ctx: Context) {
@@ -54,6 +57,36 @@ export class TelegramUpdate {
       await ctx.reply('Sorry, unable to fetch bot information at the moment.');
     }
   }
+
+  @Command('tasks')
+async tasksCommand(@Ctx() ctx: Context) {
+  const chatId = ctx.from?.id.toString();
+  if (!chatId) {
+    await ctx.reply('Не удалось идентифицировать чат.');
+    return;
+  }
+
+  try {
+    const tasks = await this.telegramReminderService.getTodayTasksByChatId(chatId);
+    if (!tasks.length) {
+      await ctx.reply('На сегодня задач нет. Отдыхайте! 🌿');
+      return;
+    }
+
+    let message = '📋 *Ваши задачи на сегодня:*\n\n';
+    for (const task of tasks) {
+      const time = task.data.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      message += `• *${task.name}* в ${time}\n`;
+      if (task.description) {
+        message += `  _${task.description}_\n`;
+      }
+    }
+    await ctx.reply(message, { parse_mode: 'MarkdownV2' });
+  } catch (error) {
+    console.error('Ошибка при получении задач:', error);
+    await ctx.reply('Произошла ошибка при загрузке задач. Попробуйте позже.');
+  }
+}
 
   @Hears(/.*/)
   async onMessage(@Ctx() ctx: Context) {

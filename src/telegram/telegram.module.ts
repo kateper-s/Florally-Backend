@@ -8,11 +8,21 @@ import { TelegramController } from "./telegram.controller";
 import { TelegramLinkService } from "./telegram-link.service";
 import { TelegramReminderService } from "./telegram-reminder.service";
 import { TelegramService } from "./telegram.service";
+import { TelegramSettingsService } from "./telegram-settings.service";
 
 @Module({
-  imports: [UserModule, TypeOrmModule.forFeature([Event, User])],
+  imports: [
+    UserModule, 
+    TypeOrmModule.forFeature([Event, User])
+  ],
   controllers: [TelegramController],
-  providers: [TelegramService, TelegramLinkService, TelegramReminderService, JwtAuthGuard],
-  exports: [TelegramService, TelegramLinkService],
+  providers: [
+    TelegramService,
+    TelegramLinkService,
+    TelegramReminderService,
+    TelegramSettingsService,
+    JwtAuthGuard,
+  ],
+  exports: [TelegramService, TelegramLinkService, TelegramSettingsService],
 })
 export class TelegramModule {}
