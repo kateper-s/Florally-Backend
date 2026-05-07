@@ -137,11 +137,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         
         for (let i = 0; i < tasks.length; i++) {
           const task = tasks[i];
-          const time = new Date(task.data).toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          message += `${i + 1}. ${task.name} — ${time}\n`;
+          message += `${i + 1}. ${task.name}\n`;
           if (task.description) {
             message += `   ${task.description}\n`;
           }
@@ -292,7 +288,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             "Теперь вы будете получать:\n" +
             "• Уведомления о событиях\n" +
             "• Напоминания за час\n" +
-            "• Ежедневные дайджесты в 10:00\n\n" +
+            "• Ежедневные дайджесты в выбранное время\n\n" +
             "Доступные команды:\n" +
             "/tasks – список задач на сегодня\n" +
             "/profile – информация о профиле\n" +
@@ -355,25 +351,43 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     this.bot.action("set_digest_time", async (ctx: any) => {
       const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, "0")}:00`);
-      const buttons = [];
+      const hourButtons = [];
       for (let i = 0; i < hours.length; i += 4) {
-        buttons.push(hours.slice(i, i + 4).map(h => Markup.button.callback(h, `time_${h}`)));
+        hourButtons.push(hours.slice(i, i + 4).map(h => Markup.button.callback(h, `select_hour_${h}`)));
       }
       
       await ctx.editMessageText(
         this.escapeMarkdown(
-          "Выберите время для ежедневного дайджеста\n\n" +
-          "В это время бот будет присылать вам список задач на день"
+          "Выберите час для ежедневного дайджеста\n\n" +
+          "После выбора часа можно будет выбрать минуты"
         ),
         {
           parse_mode: "MarkdownV2",
-          ...Markup.inlineKeyboard([...buttons, [Markup.button.callback("Назад", "settings_back")]]),
+          ...Markup.inlineKeyboard([...hourButtons, [Markup.button.callback("Назад", "settings_back")]]),
         }
       );
       await ctx.answerCbQuery();
     });
 
-    this.bot.action(/time_(\d{2}:\d{2})/, async (ctx: any) => {
+    this.bot.action(/select_hour_(\d{2}:\d{2})/, async (ctx: any) => {
+      const hour = ctx.match[1];
+      const minutes = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+      const minuteButtons = [];
+      for (let i = 0; i < minutes.length; i += 4) {
+        minuteButtons.push(minutes.slice(i, i + 4).map(m => Markup.button.callback(`${hour.substring(0, 3)}${m}`, `set_time_${hour.substring(0, 3)}${m}`)));
+      }
+      
+      await ctx.editMessageText(
+        this.escapeMarkdown(`Выбран час ${hour}\n\nВыберите минуты:`),
+        {
+          parse_mode: "MarkdownV2",
+          ...Markup.inlineKeyboard([...minuteButtons, [Markup.button.callback("Назад к выбору часа", "set_digest_time")]]),
+        }
+      );
+      await ctx.answerCbQuery();
+    });
+
+    this.bot.action(/set_time_(\d{2}:\d{2})/, async (ctx: any) => {
       const chatId = String(ctx.from?.id ?? "");
       const time = ctx.match[1];
       
@@ -513,7 +527,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private escapeMarkdown(text: string): string {
     if (!text) return '';
     
-    // Экранируем все специальные символы MarkdownV2
     const specialChars = [
       '_', '*', '[', ']', '(', ')', '~', '`', 
       '>', '#', '+', '-', '=', '|', '{', '}', 

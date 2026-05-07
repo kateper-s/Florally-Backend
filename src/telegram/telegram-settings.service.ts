@@ -31,15 +31,16 @@ export class TelegramSettingsService {
     
     return {
       user_id: user.id,
-      digest_time: user.telegram_digest_time || "10:00",
+      digest_time: user.telegram_digest_time || "10:00:00",
       reminders_enabled: user.telegram_reminders_enabled !== false,
       daily_digest_enabled: user.telegram_daily_digest_enabled !== false,
     };
   }
 
   async setDigestTime(userId: string, time: string) {
-    await this.userRepository.update(userId, { telegram_digest_time: time });
-    this.logger.log(`User ${userId} set digest time to ${time}`);
+    const formattedTime = `${time}:00`;
+    await this.userRepository.update(userId, { telegram_digest_time: formattedTime });
+    this.logger.log(`User ${userId} set digest time to ${formattedTime}`);
     return this.getSettings(userId);
   }
 
