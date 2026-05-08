@@ -176,22 +176,29 @@ export class TelegramReminderService {
     return this.getTodayTasksByUserIdJoin(user.id);
   }
 
-  private async getTodayTasksByUserIdJoin(userId: string): Promise<{ name: string; data: Date; description?: string }[]> {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
+  private async getTodayTasksByUserIdJoin(userId: string) {
+    const mskNow = this.getMskTime();
+    
+    const startMsk = new Date(mskNow);
+    startMsk.setUTCHours(0, 0, 0, 0);
+    
+    const endMsk = new Date(startMsk);
+    endMsk.setUTCDate(startMsk.getUTCDate() + 1);
+    
+    const startUtc = new Date(startMsk.getTime() - 3 * 60 * 60 * 1000);
+    const endUtc = new Date(endMsk.getTime() - 3 * 60 * 60 * 1000);
+    
     const events = await this.eventRepository
       .createQueryBuilder('event')
       .where('event.user_id = :userId', { userId })
       .andWhere('event.completed = false')
       .andWhere('event.data BETWEEN :start AND :end', {
-        start: startOfDay,
-        end: endOfDay,
+        start: startUtc,
+        end: endUtc,
       })
       .orderBy('event.data', 'ASC')
       .getMany();
-
+      
     return events.map(event => ({
       name: event.name,
       data: event.data,
